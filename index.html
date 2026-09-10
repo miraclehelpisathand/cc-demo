@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareCall 4 Online Demonstrator</title>
+<style>
+  :root{
+    /* master scale unit — call points, MSODL, single-lamp ODL and CDDU all derive from this */
+    --u:.58cm;
+    --u:clamp(.22cm, min(calc((100vh - 430px) / 15.6), calc((100vw - 800px) / 37)), .74cm);
+
+    --bg-1:#0d1317;
+    --bg-2:#1a242b;
+    --panel:rgba(255,255,255,.045);
+    --panel-line:rgba(255,255,255,.09);
+    --ink:#e9f0f5;
+    --ink-dim:#8ea3b0;
+    --accent:#35a8e0;
+    --red:#ff2f42;
+    --amber:#ffb81a;
+    --green:#3fd15c;
+    --led-idle:#c9e618;          /* yellow / green LED */
+
+    /* fixed device screen height — console and phone are locked to this so
+       neither ever resizes as alarms are added or cleared                  */
+    --devh:clamp(250px, calc(11.6 * var(--u) + 78px), 560px);
+  }
+  @media (max-width:1180px){
+    :root{ --u:clamp(.40cm, min(2.0vh, 2.6vw), .82cm); }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #24333d 0%, transparent 60%),
+      linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  }
+
+  /* ================= Header ================= */
+  header{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:9px clamp(12px,1.6vw,20px);
+    border-bottom:1px solid var(--panel-line);background:rgba(0,0,0,.2);
+  }
+  .hleft{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:9px;font-size:clamp(15px,1.5vw,21px);font-weight:700;white-space:nowrap;}
+  .brand .c1{color:var(--accent);} .brand .c2{color:var(--ink);font-weight:500;}
+  .brand .hb{width:8px;height:8px;border-radius:50%;background:var(--green);
+             box-shadow:0 0 10px var(--green);align-self:center;animation:hb 2.4s ease-in-out infinite;}
+  @keyframes hb{0%,100%{opacity:1}50%{opacity:.35}}
+  .site-field{display:flex;align-items:center;gap:8px;}
+  .site-field label{font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--ink-dim);text-transform:uppercase;}
+  .site-field input{font:inherit;font-size:12.5px;font-weight:600;letter-spacing:.5px;color:var(--ink);
+    background:rgba(0,0,0,.35);border:1px solid var(--panel-line);border-radius:7px;padding:6px 10px;min-width:190px;}
+  .site-field input:focus{outline:none;border-color:var(--accent);background:rgba(0,0,0,.5);}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;}
+  .tbtn{appearance:none;border:1px solid var(--panel-line);background:rgba(255,255,255,.06);color:var(--ink);
+    font:inherit;font-size:11.5px;font-weight:600;letter-spacing:.4px;padding:7px 11px;border-radius:8px;
+    cursor:pointer;touch-action:manipulation;user-select:none;display:flex;align-items:center;gap:6px;
+    transition:background .15s,border-color .15s,transform .06s;}
+  .tbtn:hover{background:rgba(255,255,255,.12);}
+  .tbtn:active{transform:translateY(1px);}
+  .tbtn[aria-pressed="true"]{border-color:var(--accent);color:#bfe6fb;background:rgba(53,168,224,.16);}
+  .fire-btn{cursor:pointer;}
+  .fire-btn.alarm{border-color:#ff5533;color:#ffd0c4;background:rgba(224,52,42,.24);
+                  animation:fireGlow 1s steps(1,end) infinite;}
+  @keyframes fireGlow{0%,54%{box-shadow:0 0 14px 2px rgba(255,85,51,.75);}55%,100%{box-shadow:none;}}
+
+  /* ================= Grid — top row panels share one height ================= */
+  main{
+    padding:10px clamp(10px,1.4vw,18px) 12px;
+    display:grid;gap:10px;
+    grid-template-columns:auto auto minmax(330px,1fr);
+    grid-template-areas:"points corridor station" "log log log";
+    align-items:stretch;                 /* equal heights across the top row */
+  }
+  @media (max-width:1180px){
+    main{grid-template-columns:1fr;grid-template-areas:"points" "corridor" "station" "log";}
+  }
+  .panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:13px;
+         padding:11px 13px 13px;display:flex;flex-direction:column;min-width:0;}
+  .panel-title{font-size:9.5px;font-weight:700;letter-spacing:1.5px;color:var(--ink-dim);
+               text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:9px;flex:0 0 auto;}
+  .panel-title::after{content:"";flex:1;height:1px;background:var(--panel-line);}
+  .a-points{grid-area:points;} .a-corridor{grid-area:corridor;}
+  .a-station{grid-area:station;} .a-log{grid-area:log;}
+
+  /* ================= Call points ================= */
+  .points{display:flex;gap:clamp(8px,.8vw,14px);justify-content:center;align-items:flex-start;}
+  .point{display:flex;flex-direction:column;align-items:center;gap:7px;width:calc(7.4 * var(--u));}
+  .faceplate{width:calc(7.4 * var(--u));height:calc(11.6 * var(--u));
+    background:linear-gradient(#ffffff,#eef0f2);border-radius:calc(.55 * var(--u));padding:calc(.36 * var(--u));
+    box-shadow:0 14px 28px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.9) inset,0 -3px 8px rgba(0,0,0,.06) inset;}
+  .plate-face{position:relative;width:100%;height:100%;
+    background:linear-gradient(160deg,#4fb6e8 0%,#33a4dd 55%,#2b96ce 100%);
+    border-radius:calc(.36 * var(--u));
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.18), inset 0 -1px 0 rgba(255,255,255,.25);}
+
+  .call-btn{appearance:none;border:0;padding:0;margin:0;position:absolute;left:50%;transform:translateX(-50%);
+    top:calc(2.05 * var(--u));width:calc(4.35 * var(--u));height:calc(4.35 * var(--u));border-radius:50%;
+    cursor:pointer;touch-action:manipulation;user-select:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(.05 * var(--u));
+    color:#fff;background:radial-gradient(circle at 34% 26%, var(--btn-hi), var(--btn-lo) 72%);
+    box-shadow:0 0 0 calc(.055 * var(--u)) rgba(255,255,255,.95),0 6px 14px rgba(0,0,0,.34),
+               inset 0 3px 6px rgba(255,255,255,.4),inset 0 -5px 10px rgba(0,0,0,.26);
+    transition:box-shadow .18s ease, filter .18s ease, transform .07s ease;}
+  .call-btn:active{transform:translateX(-50%) translateY(3px) scale(.985);}
+  .call-btn:focus-visible{outline:3px solid #fff;outline-offset:5px;}
+  .call-btn .plus{width:42%;height:42%;margin-bottom:calc(.06 * var(--u));}
+  .call-btn .lbl{font-size:calc(.32 * var(--u));font-weight:800;letter-spacing:.09em;line-height:1.15;
+    text-align:center;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.35);padding:0 calc(.2 * var(--u));}
+  .point.active .call-btn{filter:brightness(1.14);
+    box-shadow:0 0 0 calc(.055 * var(--u)) #fff,0 0 24px 6px var(--btn-glow),
+               inset 0 3px 6px rgba(255,255,255,.45),inset 0 -5px 10px rgba(0,0,0,.24);
+    animation:btnp 1.3s ease-in-out infinite;}
+  @keyframes btnp{0%,100%{filter:brightness(1.16)}50%{filter:brightness(.93)}}
+
+  .cancel-btn{appearance:none;border:0;padding:0;position:absolute;
+    left:calc(.78 * var(--u));top:calc(7.67 * var(--u));
+    width:calc(1.75 * var(--u));height:calc(1.75 * var(--u));border-radius:50%;
+    cursor:pointer;touch-action:manipulation;user-select:none;
+    background:radial-gradient(circle at 35% 28%, #f6f7f8, #cdd3d7 78%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(.1 * var(--u));
+    box-shadow:0 3px 7px rgba(0,0,0,.3),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -3px 5px rgba(0,0,0,.12);
+    transition:transform .07s ease, filter .15s ease;}
+  .cancel-btn:active{transform:translateY(2px);filter:brightness(.94);}
+  .cancel-btn:focus-visible{outline:3px solid #fff;outline-offset:4px;}
+  .point.active .cancel-btn{animation:cancelFlash 1s steps(1,end) infinite;}
+  @keyframes cancelFlash{
+    0%,44%{background:radial-gradient(circle at 35% 28%, #ffffff, #ffffff 78%);
+      box-shadow:0 0 0 calc(.06 * var(--u)) rgba(255,255,255,.95),0 0 20px 6px rgba(255,255,255,.8),
+                 inset 0 2px 3px rgba(255,255,255,1);}
+    50%,100%{background:radial-gradient(circle at 35% 28%, #f6f7f8, #cdd3d7 78%);
+      box-shadow:0 3px 7px rgba(0,0,0,.3),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -3px 5px rgba(0,0,0,.12);}
+  }
+  .reassure{width:calc(.6 * var(--u));height:calc(.14 * var(--u));border-radius:calc(.07 * var(--u));
+            background:#8b969d;transition:background .2s;}
+  .point.active .reassure{background:#e02419;}
+  .cancel-btn .ctxt{font-size:calc(.19 * var(--u));font-weight:800;letter-spacing:.08em;color:#5b6a73;}
+  .point.active .cancel-btn .ctxt{color:#3b4a53;}
+
+  .status-line{font-size:9.5px;letter-spacing:1px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);
+               display:flex;align-items:center;gap:6px;min-height:14px;white-space:nowrap;}
+  .point.active .status-line{color:var(--st,#fff);}
+  .status-line .sdot{width:7px;height:7px;border-radius:50%;background:#48565f;flex:0 0 auto;}
+  .point.active .status-line .sdot{background:var(--st);box-shadow:0 0 9px var(--st);}
+  .msg-field{width:100%;}
+  .msg-field label{display:block;font-size:8.5px;letter-spacing:1.2px;font-weight:700;color:var(--ink-dim);
+                   text-transform:uppercase;margin-bottom:4px;}
+  .msg-field input{width:100%;font:inherit;font-size:11.5px;font-weight:600;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.34);
+    border:1px solid var(--panel-line);border-radius:7px;padding:7px 8px;}
+  .msg-field input:focus{outline:none;border-color:var(--accent);background:rgba(0,0,0,.5);}
+
+  /* ================= Corridor : lights on top, CDDU beneath ================= */
+  .corridor{display:flex;flex-direction:column;align-items:center;gap:calc(.5 * var(--u));}
+  .lights-row{display:flex;gap:clamp(8px,.8vw,14px);align-items:flex-start;}
+
+  .housing{width:calc(7.4 * var(--u));height:calc(11.6 * var(--u));display:flex;flex-direction:column;
+    background:linear-gradient(#ffffff 0%,#f4f6f7 40%,#e2e6e9 100%);
+    border-radius:calc(.55 * var(--u));padding:calc(.36 * var(--u));
+    box-shadow:0 14px 28px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.9) inset,0 -3px 8px rgba(0,0,0,.06) inset;}
+  .odl-hood{flex:0 0 auto;height:calc(.42 * var(--u));margin:0 calc(.18 * var(--u)) calc(.26 * var(--u));
+    border-radius:calc(.26 * var(--u)) calc(.26 * var(--u)) 3px 3px;
+    background:linear-gradient(#ffffff,#e9edf0);box-shadow:0 3px 6px rgba(0,0,0,.14);}
+  .odl-window{flex:1;min-height:0;background:linear-gradient(#eceff1,#dfe3e6);
+    border-radius:calc(.26 * var(--u));padding:calc(.26 * var(--u));
+    display:flex;flex-direction:column;gap:calc(.22 * var(--u));box-shadow:inset 0 2px 6px rgba(0,0,0,.18);}
+  .seg{position:relative;flex:1;border-radius:calc(.15 * var(--u));background:linear-gradient(#dcdfe2,#c6cbcf);
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.85), inset 0 -2px 4px rgba(0,0,0,.12);}
+  .seg-lit{position:absolute;inset:0;border-radius:calc(.15 * var(--u));background:var(--c,#fff);opacity:0;
+    box-shadow:0 0 22px 4px var(--c,#fff), inset 0 0 14px rgba(255,255,255,.55);
+    transition:background-color .2s ease,opacity .2s ease,box-shadow .2s ease;}
+  .seg.lit .seg-lit{opacity:1;}
+  .seg.lit.flash-fast .seg-lit{animation:segf .55s steps(1,end) infinite;}
+  .seg.lit.flash-slow .seg-lit{animation:segf 1.2s steps(1,end) infinite;}
+  @keyframes segf{0%,55%{opacity:1}56%,100%{opacity:.06}}
+  .seg-lens{position:absolute;inset:0;border-radius:calc(.15 * var(--u));pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.05) 45%,rgba(0,0,0,.06) 100%);}
+
+  /* single circular lamp ODL */
+  .odl-window.single{align-items:center;justify-content:center;}
+  .lamp{position:relative;width:calc(4.5 * var(--u));height:calc(4.5 * var(--u));border-radius:50%;
+    background:radial-gradient(circle at 38% 32%, #e7eaec, #c4c9cd 76%);
+    box-shadow:inset 0 2px 5px rgba(255,255,255,.85), inset 0 -3px 7px rgba(0,0,0,.16),
+               0 1px 2px rgba(0,0,0,.12);}
+  .lamp-lit{position:absolute;inset:0;border-radius:50%;background:var(--c,#fff);opacity:0;
+    box-shadow:0 0 34px 8px var(--c,#fff), inset 0 0 18px rgba(255,255,255,.6);
+    transition:background-color .2s ease,opacity .2s ease,box-shadow .2s ease;}
+  .lamp.lit .lamp-lit{opacity:1;}
+  .lamp.lit.flash-fast .lamp-lit{animation:segf .55s steps(1,end) infinite;}
+  .lamp.lit.flash-slow .lamp-lit{animation:segf 1.2s steps(1,end) infinite;}
+  .lamp-lens{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:linear-gradient(165deg,rgba(255,255,255,.6) 0%,rgba(255,255,255,.06) 46%,rgba(0,0,0,.07) 100%);}
+
+  .odl-brand{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;gap:4px;
+    padding:calc(.2 * var(--u)) calc(.08 * var(--u)) 0;color:#9aa3aa;
+    font-size:calc(.2 * var(--u));font-weight:700;letter-spacing:.13em;}
+  .dev-tag{font-size:8.5px;letter-spacing:1.4px;color:var(--ink-dim);text-transform:uppercase;
+           font-weight:700;text-align:center;margin-top:5px;}
+
+  /* CDDU sits under the lights */
+  .cddu-shroud{width:max-content;flex:0 0 auto;
+    background:linear-gradient(#ffffff 0%,#f2f4f6 45%,#dfe3e7 100%);
+    border-radius:calc(.34 * var(--u));padding:calc(.26 * var(--u));
+    box-shadow:0 14px 28px rgba(0,0,0,.45),0 2px 0 rgba(255,255,255,.7) inset;}
+  .cddu-hood{height:calc(.34 * var(--u));border-radius:calc(.22 * var(--u)) calc(.22 * var(--u)) 3px 3px;
+    background:linear-gradient(#ffffff,#e6eaee);box-shadow:0 3px 6px rgba(0,0,0,.18);margin-bottom:calc(.2 * var(--u));}
+  .cddu-window{background:#07090a;border-radius:calc(.2 * var(--u));
+    padding:calc(.4 * var(--u)) calc(.44 * var(--u));position:relative;overflow:hidden;
+    box-shadow:0 0 0 2px #b9c0c6, inset 0 3px 14px rgba(0,0,0,.95);}
+  .cddu-window::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,rgba(255,255,255,.09) 0%,rgba(255,255,255,0) 42%);}
+  .matrix{display:grid;grid-template-columns:repeat(78,1fr);grid-auto-rows:1fr;gap:1px;width:calc(12 * var(--u));}
+  .dot{aspect-ratio:1/1;border-radius:50%;background:#171b1e;transition:background-color .04s linear,box-shadow .04s linear;}
+  .dot.on{background:var(--led,var(--led-idle));
+          box-shadow:0 0 4px var(--led,var(--led-idle)),0 0 9px color-mix(in srgb, var(--led,var(--led-idle)) 55%, transparent);}
+  .cddu-foot{padding:calc(.2 * var(--u)) calc(.1 * var(--u)) 0;font-size:calc(.24 * var(--u));
+             letter-spacing:.14em;color:#7b858d;font-weight:700;}
+
+  .legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-size:9.5px;color:var(--ink-dim);}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:2px;display:block;}
+
+  /* ================= Nurses station ================= */
+  .station{display:flex;gap:clamp(10px,1vw,18px);align-items:flex-start;justify-content:center;}
+  .dev{display:flex;flex-direction:column;}
+  .dev-cap{text-align:center;font-size:8.5px;letter-spacing:1.4px;color:var(--ink-dim);
+           text-transform:uppercase;font-weight:700;margin-top:7px;flex:0 0 auto;}
+  .dev.console-dev{flex:1;min-width:0;}
+
+  .console{display:flex;flex-direction:column;
+    background:linear-gradient(#2b3239,#1c2227);border:1px solid #414c55;border-radius:13px;
+    padding:9px;box-shadow:0 16px 34px rgba(0,0,0,.5);}
+  .console-screen{flex:0 0 auto;height:var(--devh);background:#0b1216;border-radius:8px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px #26333b;display:flex;flex-direction:column;}
+  .console-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;
+    padding:8px 13px;background:linear-gradient(#1b6ea8,#155a8a);}
+  .console-bar .ttl{font-size:12px;font-weight:800;letter-spacing:.6px;}
+  .console-bar .ttl small{display:block;font-size:8.5px;font-weight:600;letter-spacing:1.3px;opacity:.75;margin-top:2px;}
+  .console-bar .clk{font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+
+  /* 70 / 30 horizontal split */
+  .sect{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+  .sect.active-sect{flex:7 1 0;}
+  .sect.other-sect{flex:3 1 0;border-top:2px solid #223039;}
+  .sect-hd{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:5px 12px;background:#16222a;color:#8fa6b4;
+    font-size:8.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;}
+  .sect-hd .n{color:#c9dae5;background:rgba(255,255,255,.09);border-radius:9px;padding:1px 7px;}
+  .sect-body{flex:1;min-height:0;overflow-y:auto;padding:0;display:flex;flex-direction:column;}
+
+  /* console alarm bands — same presentation as the mobile handset, no icon */
+  .cband{flex:0 0 auto;background:var(--bandbg);color:var(--bandfg);
+         padding:5px 10px 7px;border-bottom:1px solid rgba(0,0,0,.14);}
+  .cband-time{text-align:center;font-size:10px;font-weight:600;line-height:1.3;margin-bottom:2px;}
+  .cband-main{display:flex;align-items:flex-start;gap:8px;}
+  .cband-tx{flex:1;min-width:0;}
+  .cband-nm{font-size:13px;font-weight:800;line-height:1.25;word-break:break-word;}
+  .cband-mn{font-size:11px;font-weight:700;line-height:1.3;margin-top:1px;}
+  .cband-ch{flex:0 0 auto;align-self:center;font-size:20px;font-weight:800;line-height:1;opacity:.95;}
+  .cband-st{font-size:10px;font-weight:600;margin-top:3px;display:flex;justify-content:space-between;gap:8px;}
+  .cband-st .dur{font-variant-numeric:tabular-nums;font-weight:800;}
+  .cband.fire{background:#ffffff;color:#e01b0c;border-bottom:2px solid #e01b0c;}
+  .cband.fire .cband-nm{font-size:13.5px;letter-spacing:.4px;}
+
+  .sect-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#4e6070;
+    font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;padding:8px;}
+  .console-foot{flex:0 0 auto;display:flex;justify-content:space-between;padding:7px 4px 1px;
+    font-size:8.5px;letter-spacing:1.3px;color:#71808b;font-weight:700;text-transform:uppercase;}
+
+  /* ================= Mobile phone ================= */
+  .phone{flex:0 0 auto;width:clamp(196px,15vw,248px);display:flex;flex-direction:column;
+    background:#0c1012;border-radius:26px;padding:9px;border:1px solid #39434b;
+    box-shadow:0 16px 34px rgba(0,0,0,.55);}
+  /* height is locked so the handset never grows or shrinks with alarm count */
+  .phone-screen{flex:0 0 auto;height:var(--devh);background:#ffffff;border-radius:19px;overflow:hidden;
+    display:flex;flex-direction:column;}
+
+  .ph-sys{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:3px 9px;background:#5d666d;color:#fff;font-size:8px;font-weight:600;letter-spacing:.2px;}
+  .ph-asset{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:4px 8px;background:#8a9299;}
+  .ph-asset .i{width:17px;height:17px;border-radius:50%;background:#1d7dc4;color:#fff;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-style:italic;}
+  .ph-asset .at{flex:1;text-align:center;font-size:9px;font-weight:700;color:#f0f3f5;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ph-user{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:5px 8px;background:#0d0d0d;}
+  .ph-user .ut{flex:1;text-align:center;font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px;}
+  .ph-user .go{width:19px;height:19px;border-radius:50%;background:#1d7dc4;color:#fff;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;}
+
+  .ph-bands{flex:1;min-height:0;overflow-y:auto;background:#fff;display:flex;flex-direction:column;}
+  .band{flex:0 0 auto;background:var(--bandbg);color:var(--bandfg);
+        padding:4px 7px 6px;border-bottom:1px solid rgba(0,0,0,.12);}
+  .band-time{text-align:center;font-size:9px;font-weight:600;line-height:1.3;margin-bottom:2px;}
+  .band-main{display:flex;align-items:flex-start;gap:6px;}
+  .band-ic{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.55);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;position:relative;margin-top:1px;}
+  .band-ic svg{width:15px;height:15px;}
+  .band-ic .pip{position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-radius:50%;
+    background:#f08a00;border:1.5px solid var(--bandbg);}
+  .band-tx{flex:1;min-width:0;}
+  .band-nm{font-size:11px;font-weight:800;line-height:1.25;word-break:break-word;}
+  .band-mn{font-size:10px;font-weight:700;line-height:1.3;margin-top:1px;}
+  .band-ch{flex:0 0 auto;align-self:center;font-size:19px;font-weight:800;line-height:1;opacity:.95;}
+  .band-st{font-size:9px;font-weight:600;margin-top:3px;display:flex;justify-content:space-between;gap:6px;}
+  .band-st .dur{font-variant-numeric:tabular-nums;font-weight:800;}
+  .ph-none{flex:1;display:flex;align-items:center;justify-content:center;color:#9aa7b0;
+    font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;padding:14px;text-align:center;}
+  /* fire band — white field, red text, always first */
+  .band.fire{background:#ffffff;color:#e01b0c;border-bottom:2px solid #e01b0c;}
+  .band.fire .band-nm{font-size:12.5px;letter-spacing:.4px;}
+  .band.fire .band-ic{background:rgba(224,27,12,.12);}
+
+  .ph-nav{flex:0 0 auto;display:flex;background:#e9ecee;border-top:1px solid #cfd5d9;}
+  .ph-nav .nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 1px 3px;
+    font-size:7.5px;font-weight:600;color:#5c666d;}
+  .ph-nav .nv svg{width:13px;height:13px;}
+  .ph-nav .nv.on{color:#0e7a3c;}
+  .ph-nav .nv.alarm svg{color:#e8a300;}
+  .ph-nav .nv.alarm.hot svg{color:#e03a2f;}
+  /* mirrors .console-foot metrics so console and handset stay level */
+  .phone-foot{flex:0 0 auto;display:flex;justify-content:space-between;padding:7px 4px 1px;
+    font-size:8.5px;letter-spacing:1.3px;color:#71808b;font-weight:700;text-transform:uppercase;}
+
+  /* ================= Report ================= */
+  .report{background:#fff;border-radius:10px;padding:12px 14px 14px;color:#1a1a1a;box-shadow:0 14px 28px rgba(0,0,0,.4);}
+  .rep-title{font-size:15.5px;font-weight:800;color:#153a63;margin:0 0 6px;}
+  .rep-meta{font-size:10px;color:#2b2b2b;line-height:1.55;margin-bottom:8px;}
+  .rep-meta .grid{display:flex;flex-wrap:wrap;gap:2px 26px;}
+  .rep-scroll{max-height:clamp(100px,17vh,220px);overflow:auto;}
+  table.rep{width:100%;border-collapse:collapse;font-size:11.5px;min-width:640px;}
+  table.rep th{background:#9db8d2;color:#12283f;text-align:left;font-weight:800;padding:6px 11px;
+               border:1px solid #fff;white-space:nowrap;position:sticky;top:0;z-index:1;}
+  table.rep td{padding:6px 11px;border:1px solid #fff;color:#1a1a1a;vertical-align:top;}
+  table.rep tbody tr:nth-child(odd)  td{background:#dce6f1;}
+  table.rep tbody tr:nth-child(even) td{background:#f2f6fa;}
+  table.rep tbody tr.live td{background:#fff2cf;font-weight:700;}
+  table.rep td.mono{font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .rep-none{padding:11px;background:#f2f6fa;color:#5b6b7a;font-style:italic;font-size:11.5px;}
+
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px;}
+  .report ::-webkit-scrollbar-thumb,.ph-bands::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hleft">
+    <div class="brand">
+      <span class="hb" aria-hidden="true"></span>
+      <span class="c1">CareCall 4</span><span class="c2">Online Demonstrator</span>
+    </div>
+    <div class="site-field">
+      <label for="siteName">Site</label>
+      <input id="siteName" type="text" value="Care Site" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="tbtn fire-btn" id="fireBtn" title="Fire alarm status — activates automatically every 3 minutes">
+      <svg id="fireIconNormal" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M3 21V7l7-4 7 4v14h-4v-5h-6v5H3zm4-9h2v-2H7v2zm4 0h2v-2h-2v2zm-4-4h2V6H7v2zm4 0h2V6h-2v2z"/>
+      </svg>
+      <svg id="fireIconAlarm" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none">
+        <path d="M2 21V7l6-3.5L14 7v14H2z" fill="#c9541f"/>
+        <path d="M5 12h2v-2H5v2zm4 0h2v-2H9v2zm-4-4h2V6H5v2zm4 0h2V6H9v2z" fill="#3a1a0a"/>
+        <path d="M17.5 3.5c.8 2.2-.7 3.1-.4 4.8.2 1.1 1.1 1.7 1.9 1.4-.3 1.1.1 1.6.6 2.3 1.6 2.3.6 5.6-2 6.6-2.4.9-5.2-.4-5.8-3-.6-2.6 1.2-3.9 1.6-5.5.5.5.8 1.2.8 2 1.1-1 2-2.6 1.7-4.3 1.2.5 2 1.6 2.2 2.9.7-1 .9-2.4-.6-7.2z" fill="#ff7a18"/>
+        <path d="M15.6 12.4c.5.9.2 1.6-.2 2.3-.5.9-.2 2 .7 2.4 1 .5 2.2 0 2.5-1 .3-1-.2-1.7-.5-2.4-.4-.9-.3-1.7.1-2.4-1 .2-1.9.6-2.6 1.1z" fill="#ffd23f"/>
+      </svg>
+      <span id="fireLbl">Fire</span>
+    </button>
+    <button class="tbtn" id="soundBtn" aria-pressed="true">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+      <span id="soundLbl">Tones on</span>
+    </button>
+    <button class="tbtn" id="resetBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+      Reset demo
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===== Call points ===== -->
+  <section class="panel a-points">
+    <h2 class="panel-title">Call points</h2>
+    <div class="points">
+
+      <div class="point" data-type="emergency" style="--btn-hi:#ff5c6d;--btn-lo:#cf1e33;--btn-glow:rgba(255,47,66,.8);--st:var(--red);">
+        <div class="faceplate"><div class="plate-face">
+          <button class="call-btn" data-action="raise" aria-label="Emergency call">
+            <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
+              <line x1="50" y1="17" x2="50" y2="83"/><line x1="17" y1="50" x2="83" y2="50"/></g></svg>
+            <span class="lbl">Emergency</span>
+          </button>
+          <button class="cancel-btn" data-action="cancel" aria-label="Cancel emergency call">
+            <span class="reassure"></span><span class="ctxt">CANCEL</span>
+          </button>
+        </div></div>
+        <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
+        <div class="msg-field">
+          <label for="txt-emergency">Alarm name</label>
+          <input id="txt-emergency" type="text" maxlength="40" value="EMERGENCY" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="point" data-type="call" style="--btn-hi:#8fd97a;--btn-lo:#3f9c33;--btn-glow:rgba(63,209,92,.8);--st:var(--green);">
+        <div class="faceplate"><div class="plate-face">
+          <button class="call-btn" data-action="raise" aria-label="Normal call">
+            <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
+              <line x1="50" y1="17" x2="50" y2="83"/><line x1="17" y1="50" x2="83" y2="50"/></g></svg>
+            <span class="lbl">Call</span>
+          </button>
+          <button class="cancel-btn" data-action="cancel" aria-label="Cancel normal call">
+            <span class="reassure"></span><span class="ctxt">CANCEL</span>
+          </button>
+        </div></div>
+        <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
+        <div class="msg-field">
+          <label for="txt-call">Alarm name</label>
+          <input id="txt-call" type="text" maxlength="40" value="CALL" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="point" data-type="staff" style="--btn-hi:#ffd95c;--btn-lo:#e0a100;--btn-glow:rgba(255,184,26,.8);--st:var(--amber);">
+        <div class="faceplate"><div class="plate-face">
+          <button class="call-btn" data-action="raise" aria-label="Staff assist call">
+            <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
+              <line x1="50" y1="17" x2="50" y2="83"/><line x1="17" y1="50" x2="83" y2="50"/></g></svg>
+            <span class="lbl">Staff<br>Assist</span>
+          </button>
+          <button class="cancel-btn" data-action="cancel" aria-label="Cancel staff assist call">
+            <span class="reassure"></span><span class="ctxt">CANCEL</span>
+          </button>
+        </div></div>
+        <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
+        <div class="msg-field">
+          <label for="txt-staff">Alarm name</label>
+          <input id="txt-staff" type="text" maxlength="40" value="STAFF ASSIST" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Corridor ===== -->
+  <section class="panel a-corridor">
+    <h2 class="panel-title">Corridor</h2>
+    <div class="corridor">
+
+      <div class="lights-row">
+        <div>
+          <div class="housing" role="img" aria-label="Multi segment over door light">
+            <div class="odl-hood" aria-hidden="true"></div>
+            <div class="odl-window">
+              <div class="seg"><div class="seg-lit"></div><div class="seg-lens"></div></div>
+              <div class="seg"><div class="seg-lit"></div><div class="seg-lens"></div></div>
+              <div class="seg"><div class="seg-lit"></div><div class="seg-lens"></div></div>
+              <div class="seg"><div class="seg-lit"></div><div class="seg-lens"></div></div>
+            </div>
+          </div>
+          <div class="dev-tag">MSODL</div>
+        </div>
+
+        <div>
+          <div class="housing" role="img" aria-label="Single lamp over door light">
+            <div class="odl-hood" aria-hidden="true"></div>
+            <div class="odl-window single">
+              <div class="lamp" id="lamp"><div class="lamp-lit"></div><div class="lamp-lens"></div></div>
+            </div>
+          </div>
+          <div class="dev-tag">ODL</div>
+        </div>
+      </div>
+
+      <div class="cddu-shroud">
+        <div class="cddu-hood" aria-hidden="true"></div>
+        <div class="cddu-window">
+          <div class="matrix" id="matrix" role="img" aria-label="CDDU display" aria-live="polite"></div>
+        </div>
+        <div class="cddu-foot">CDDU</div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--red)"></i>Emergency</span>
+        <span><i style="background:var(--amber)"></i>Staff assist</span>
+        <span><i style="background:var(--green)"></i>Call</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Nurses station ===== -->
+  <section class="panel a-station">
+    <h2 class="panel-title">Nurses station</h2>
+    <div class="station">
+
+      <div class="dev console-dev">
+        <div class="console">
+          <div class="console-screen">
+            <div class="console-bar">
+              <div class="ttl">CareCall 4 &mdash; Nurse Station<small id="consoleSite">CARE SITE</small></div>
+              <div class="clk" id="consoleClock">--:--</div>
+            </div>
+
+            <div class="sect active-sect">
+              <div class="sect-hd"><span>Active Alarms</span><span class="n" id="activeN">0</span></div>
+              <div class="sect-body" id="activeBody">
+                <div class="sect-empty" id="activeEmpty">No active alarms</div>
+              </div>
+            </div>
+
+            <div class="sect other-sect">
+              <div class="sect-hd"><span>Other Alarms</span><span class="n" id="otherN">0</span></div>
+              <div class="sect-body" id="otherBody"></div>
+            </div>
+          </div>
+          <div class="console-foot"><span id="consoleCount">No active calls</span><span>System healthy</span></div>
+        </div>
+        <div class="dev-cap">Nurse console</div>
+      </div>
+
+      <div class="dev">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="ph-sys"><span id="phSysTime">6:07</span><span>&#9679;&#9679;&#9679;&#9679; &#9646;</span></div>
+            <div class="ph-asset">
+              <span class="i">i</span>
+              <span class="at" id="phAsset">Asset #123456</span>
+            </div>
+            <div class="ph-user">
+              <span class="ut">Android User</span>
+              <span class="go"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 5l7 7-7 7z"/></svg></span>
+            </div>
+            <div class="ph-bands" id="phBands">
+              <div class="ph-none" id="phNone">No active alarms</div>
+            </div>
+            <div class="ph-nav">
+              <div class="nv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.9 4a7 7 0 00-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 00-2-1.2L16 3H8l-.4 2.6a7 7 0 00-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 000 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 002 1.2L8 21h8l.4-2.6a7 7 0 002-1.2l2.4 1 2-3.5-2-1.5c.06-.4.1-.8.1-1.2z"/></svg>Settings</div>
+              <div class="nv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 109 9h-2a7 7 0 11-7-7v3l4-4-4-4v3zm-1 5v5l4 2 .8-1.3-3.3-2V8z"/></svg>History</div>
+              <div class="nv alarm on" id="navAlarm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-7h-2v5h2V9z"/></svg>Alarm</div>
+              <div class="nv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>Message</div>
+            </div>
+          </div>
+          <div class="phone-foot"><span id="phFoot">No alarms</span><span>Online</span></div>
+        </div>
+        <div class="dev-cap">Staff mobile</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Report ===== -->
+  <section class="panel a-log">
+    <h2 class="panel-title">Event log</h2>
+    <div class="report">
+      <h3 class="rep-title">Call Point Report - Alarm Activations Detail</h3>
+      <div class="rep-meta">
+        <div class="grid">
+          <span>Date Range: <span id="repRange">&mdash;</span></span>
+          <span>Activations Between: 12:00:00 AM to 11:59:59 PM</span>
+          <span>Alarm Duration: All</span>
+          <span>Total Alarms : <span id="repTotal">0</span></span>
+        </div>
+        <div>Alarm Priorities: All</div>
+      </div>
+      <div class="rep-scroll">
+        <table class="rep">
+          <thead><tr>
+            <th style="width:105px">Date</th><th style="width:85px">Time</th>
+            <th style="width:95px">Duration</th><th>Alarm Name</th><th style="width:180px">Client Name</th>
+          </tr></thead>
+          <tbody id="repBody"></tbody>
+        </table>
+      </div>
+      <div class="rep-none" id="repNone">No alarm activations recorded &mdash; press a call point to begin.</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+const TYPES = {
+  emergency:{ name:"Emergency", priority:1, colour:"#ff2f42",
+              band:"#e0342a", bandFg:"#ffffff", flash:"flash-fast",
+              tone:{f:1050,n:3,on:.09,gap:.07,every:1100} },
+  staff:    { name:"Staff Assist", priority:2, colour:"#ffb81a",
+              band:"#f2e400", bandFg:"#000000", flash:"flash-slow",
+              tone:{f:840,n:2,on:.12,gap:.11,every:1800} },
+  call:     { name:"Call", priority:3, colour:"#3fd15c",
+              band:"#159c3f", bandFg:"#ffffff", flash:"",
+              tone:{f:640,n:1,on:.18,gap:0,every:3200} }
+};
+
+const CHARS=13, COLS=CHARS*6, ROWS=7, SCROLL_MS=55, CYCLE_MS=2400;
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const LED_IDLE=getComputedStyle(document.documentElement).getPropertyValue("--led-idle").trim()||"#c9e618";
+
+/* Fire alarm — fires automatically every 3 minutes and clears after 12 seconds */
+const FIRE = {
+  text:"FIRE - ZONE 1",
+  colour:"#ff2010",          /* CDDU LED red */
+  period:180000,             /* 3 minutes  */
+  duration:12000             /* 12 seconds */
+};
+
+const FONT={
+" ":["00000","00000","00000","00000","00000","00000","00000"],
+"A":["01110","10001","10001","11111","10001","10001","10001"],
+"B":["11110","10001","10001","11110","10001","10001","11110"],
+"C":["01110","10001","10000","10000","10000","10001","01110"],
+"D":["11110","10001","10001","10001","10001","10001","11110"],
+"E":["11111","10000","10000","11110","10000","10000","11111"],
+"F":["11111","10000","10000","11110","10000","10000","10000"],
+"G":["01110","10001","10000","10111","10001","10001","01111"],
+"H":["10001","10001","10001","11111","10001","10001","10001"],
+"I":["01110","00100","00100","00100","00100","00100","01110"],
+"J":["00111","00010","00010","00010","00010","10010","01100"],
+"K":["10001","10010","10100","11000","10100","10010","10001"],
+"L":["10000","10000","10000","10000","10000","10000","11111"],
+"M":["10001","11011","10101","10101","10001","10001","10001"],
+"N":["10001","10001","11001","10101","10011","10001","10001"],
+"O":["01110","10001","10001","10001","10001","10001","01110"],
+"P":["11110","10001","10001","11110","10000","10000","10000"],
+"Q":["01110","10001","10001","10001","10101","10010","01101"],
+"R":["11110","10001","10001","11110","10100","10010","10001"],
+"S":["01111","10000","10000","01110","00001","00001","11110"],
+"T":["11111","00100","00100","00100","00100","00100","00100"],
+"U":["10001","10001","10001","10001","10001","10001","01110"],
+"V":["10001","10001","10001","10001","10001","01010","00100"],
+"W":["10001","10001","10001","10101","10101","11011","10001"],
+"X":["10001","10001","01010","00100","01010","10001","10001"],
+"Y":["10001","10001","01010","00100","00100","00100","00100"],
+"Z":["11111","00001","00010","00100","01000","10000","11111"],
+"a":["00000","00000","01110","00001","01111","10001","01111"],
+"b":["10000","10000","11110","10001","10001","10001","11110"],
+"c":["00000","00000","01111","10000","10000","10000","01111"],
+"d":["00001","00001","01111","10001","10001","10001","01111"],
+"e":["00000","00000","01110","10001","11111","10000","01110"],
+"f":["00110","01001","01000","11100","01000","01000","01000"],
+"g":["00000","01111","10001","10001","01111","00001","01110"],
+"h":["10000","10000","11110","10001","10001","10001","10001"],
+"i":["00100","00000","01100","00100","00100","00100","01110"],
+"j":["00010","00000","00110","00010","00010","10010","01100"],
+"k":["10000","10000","10010","10100","11000","10100","10010"],
+"l":["01100","00100","00100","00100","00100","00100","01110"],
+"m":["00000","00000","11010","10101","10101","10101","10101"],
+"n":["00000","00000","11110","10001","10001","10001","10001"],
+"o":["00000","00000","01110","10001","10001","10001","01110"],
+"p":["00000","11110","10001","10001","11110","10000","10000"],
+"q":["00000","01111","10001","10001","01111","00001","00001"],
+"r":["00000","00000","10110","11001","10000","10000","10000"],
+"s":["00000","00000","01111","10000","01110","00001","11110"],
+"t":["01000","01000","11100","01000","01000","01001","00110"],
+"u":["00000","00000","10001","10001","10001","10011","01101"],
+"v":["00000","00000","10001","10001","10001","01010","00100"],
+"w":["00000","00000","10001","10101","10101","10101","01010"],
+"x":["00000","00000","10001","01010","00100","01010","10001"],
+"y":["00000","10001","10001","10001","01111","00001","01110"],
+"z":["00000","00000","11111","00010","00100","01000","11111"],
+"0":["01110","10001","10011","10101","11001","10001","01110"],
+"1":["00100","01100","00100","00100","00100","00100","01110"],
+"2":["01110","10001","00001","00010","00100","01000","11111"],
+"3":["11111","00010","00100","00010","00001","10001","01110"],
+"4":["00010","00110","01010","10010","11111","00010","00010"],
+"5":["11111","10000","11110","00001","00001","10001","01110"],
+"6":["00110","01000","10000","11110","10001","10001","01110"],
+"7":["11111","00001","00010","00100","01000","01000","01000"],
+"8":["01110","10001","10001","01110","10001","10001","01110"],
+"9":["01110","10001","10001","01111","00001","00010","01100"],
+"-":["00000","00000","00000","11111","00000","00000","00000"],
+"_":["00000","00000","00000","00000","00000","00000","11111"],
+".":["00000","00000","00000","00000","00000","01100","01100"],
+",":["00000","00000","00000","00000","01100","01100","11000"],
+":":["00000","01100","01100","00000","01100","01100","00000"],
+"/":["00001","00010","00010","00100","01000","01000","10000"],
+"+":["00000","00100","00100","11111","00100","00100","00000"],
+"=":["00000","00000","11111","00000","11111","00000","00000"],
+"!":["00100","00100","00100","00100","00100","00000","00100"],
+"?":["01110","10001","00001","00010","00100","00000","00100"],
+"'":["00100","00100","01000","00000","00000","00000","00000"],
+"&":["01100","10010","10100","01000","10101","10010","01101"],
+"#":["01010","01010","11111","01010","11111","01010","01010"],
+"*":["00000","00100","10101","01110","10101","00100","00000"],
+"(":["00010","00100","01000","01000","01000","00100","00010"],
+")":["01000","00100","00010","00010","00010","00100","01000"]
+};
+
+/* ===== CDDU ===== */
+const matrixEl=document.getElementById("matrix");
+const dots=[];
+for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+  const d=document.createElement("div"); d.className="dot"; matrixEl.appendChild(d); dots.push(d);
+}
+const dotAt=(r,c)=>dots[r*COLS+c];
+function textToColumns(str){
+  const out=[];
+  for(const ch of str){
+    const g=FONT[ch]||FONT["?"];
+    for(let c=0;c<5;c++){const col=[];for(let r=0;r<ROWS;r++)col.push(g[r][c]==="1");out.push(col);}
+    out.push(new Array(ROWS).fill(false));
+  }
+  return out;
+}
+const blankCols=n=>Array.from({length:n},()=>new Array(ROWS).fill(false));
+const sanitise=s=>(s||"").split("").map(c=>FONT[c]?c:(FONT[c.toUpperCase()]?c.toUpperCase():" ")).join("");
+
+let annCols=blankCols(COLS), annScroll=false, annOffset=0, annKey=null;
+function setMessage(text,colour){
+  const clean=sanitise(text).replace(/\s+$/,"")||" ";
+  const k=clean+"|"+colour;
+  if(k===annKey) return;
+  annKey=k;
+  matrixEl.style.setProperty("--led",colour);
+  if(clean.length<=CHARS){
+    const pad=CHARS-clean.length, l=Math.floor(pad/2);
+    annCols=textToColumns(" ".repeat(l)+clean+" ".repeat(pad-l)); annScroll=false; annOffset=0;
+  }else{
+    annCols=blankCols(COLS).concat(textToColumns(clean)); annScroll=true; annOffset=0;
+  }
+  paint();
+}
+function paint(){
+  for(let c=0;c<COLS;c++){
+    const src=annScroll?annCols[(annOffset+c)%annCols.length]:(annCols[c]||[]);
+    for(let r=0;r<ROWS;r++) dotAt(r,c).classList.toggle("on",!!(src&&src[r]));
+  }
+}
+setInterval(()=>{ if(annScroll){annOffset=(annOffset+1)%annCols.length;paint();} },SCROLL_MS);
+
+/* ===== Formatters ===== */
+const p2=n=>String(n).padStart(2,"0");
+const idleStamp=d=>d.getDate()+" "+MONTHS[d.getMonth()]+" "+p2(d.getHours())+"."+p2(d.getMinutes());
+const repDate=d=>MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear();
+const repTime=d=>p2(d.getHours())+":"+p2(d.getMinutes())+":"+p2(d.getSeconds());
+const dur=ms=>{const s=Math.floor(ms/1000);return p2(Math.floor(s/3600))+":"+p2(Math.floor(s/60)%60)+":"+p2(s%60);};
+const elapsed=ms=>{const s=Math.floor(ms/1000);return p2(Math.floor(s/60))+":"+p2(s%60);};
+/* DD/MM/YYYY hh:mm AM/PM  e.g. 17/01/2023 05:12 PM */
+function phoneStamp(d){
+  let h=d.getHours(); const ap=h>=12?"PM":"AM"; h=h%12||12;
+  return p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear()+" "+p2(h)+":"+p2(d.getMinutes())+" "+ap;
+}
+function clock12(d){ let h=d.getHours(); h=h%12||12; return h+":"+p2(d.getMinutes()); }
+
+/* ===== State ===== */
+const active=new Map();
+let cycleIndex=0, cycleTimer=null, rowSeq=0;
+const rows=[];
+
+const pointEls={};
+document.querySelectorAll(".point").forEach(el=>pointEls[el.dataset.type]=el);
+const segs=[...document.querySelectorAll(".seg")];
+const lampEl=document.getElementById("lamp");
+const lampLit=lampEl.querySelector(".lamp-lit");
+const siteInput=document.getElementById("siteName");
+const activeBody=document.getElementById("activeBody");
+const activeEmpty=document.getElementById("activeEmpty");
+const activeN=document.getElementById("activeN");
+const otherBody=document.getElementById("otherBody");
+const otherN=document.getElementById("otherN");
+const consoleCount=document.getElementById("consoleCount");
+const consoleClock=document.getElementById("consoleClock");
+const consoleSite=document.getElementById("consoleSite");
+const phBands=document.getElementById("phBands");
+const phNone=document.getElementById("phNone");
+const phAsset=document.getElementById("phAsset");
+const phSysTime=document.getElementById("phSysTime");
+const phFoot=document.getElementById("phFoot");
+const navAlarm=document.getElementById("navAlarm");
+const repBody=document.getElementById("repBody");
+const repNone=document.getElementById("repNone");
+const repTotal=document.getElementById("repTotal");
+const repRange=document.getElementById("repRange");
+
+const nameFor=k=>{const v=document.getElementById("txt-"+k).value.trim();return v||TYPES[k].name.toUpperCase();};
+const queue=()=>[...active.entries()]
+  .sort((a,b)=>TYPES[a[0]].priority-TYPES[b[0]].priority||a[1].raisedAt-b[1].raisedAt).map(e=>e[0]);
+
+/* ===== Fire alarm state ===== */
+let fireActive=false, fireStart=null, fireRow=null, fireBand=null;
+const fireBtn=document.getElementById("fireBtn");
+const fireIconNormal=document.getElementById("fireIconNormal");
+const fireIconAlarm=document.getElementById("fireIconAlarm");
+const fireLbl=document.getElementById("fireLbl");
+
+function makeFireRow(){
+  const root=document.createElement("div"); root.className="cband fire";
+  const time=document.createElement("div"); time.className="cband-time";
+  const main=document.createElement("div"); main.className="cband-main";
+  const tx=document.createElement("div");   tx.className="cband-tx";
+  const nm=document.createElement("div");   nm.className="cband-nm"; nm.textContent=FIRE.text;
+  const mn=document.createElement("div");   mn.className="cband-mn";
+  tx.append(nm,mn);
+  const ch=document.createElement("div");   ch.className="cband-ch"; ch.textContent="\u276F";
+  main.append(tx,ch);
+  const st=document.createElement("div");   st.className="cband-st";
+  const sl=document.createElement("span");  sl.textContent="Fire panel activation.";
+  const sd=document.createElement("span");  sd.className="dur";
+  st.append(sl,sd);
+  root.append(time,main,st); otherBody.appendChild(root);
+  return {root,time,mn,st:sd};
+}
+function makeFireBand(){
+  const root=document.createElement("div"); root.className="band fire";
+  const time=document.createElement("div"); time.className="band-time";
+  const main=document.createElement("div"); main.className="band-main";
+  const ic=document.createElement("div");   ic.className="band-ic";
+  ic.innerHTML='<svg viewBox="0 0 24 24" fill="#e01b0c"><path d="M13.5 1.5c1 2.8-.9 4-.5 6.1.3 1.4 1.4 2.2 2.4 1.8-.4 1.4.1 2 .8 2.9 2 2.9.7 7.1-2.6 8.4-3 1.2-6.6-.5-7.4-3.8-.8-3.3 1.5-5 2-7 .7.7 1.1 1.6 1 2.6 1.4-1.3 2.6-3.3 2.2-5.5 1.5.7 2.5 2 2.8 3.7.9-1.3 1.2-3-.7-9.2z"/></svg>';
+  const tx=document.createElement("div");   tx.className="band-tx";
+  const nm=document.createElement("div");   nm.className="band-nm"; nm.textContent=FIRE.text;
+  const mn=document.createElement("div");   mn.className="band-mn";
+  tx.append(nm,mn);
+  const ch=document.createElement("div");   ch.className="band-ch"; ch.textContent="\u276F";
+  main.append(ic,tx,ch);
+  const st=document.createElement("div");   st.className="band-st";
+  const sl=document.createElement("span");  sl.textContent="Fire panel activation.";
+  const sd=document.createElement("span");  sd.className="dur";
+  st.append(sl,sd);
+  root.append(time,main,st);
+  phBands.insertBefore(root,phBands.firstChild);
+  return {root,time,mn,sd};
+}
+
+function fireOn(){
+  if(fireActive) return;
+  fireActive=true; fireStart=new Date();
+  fireRow=makeFireRow();
+  fireRow.time.textContent=phoneStamp(fireStart);
+  fireBand=makeFireBand();
+  fireBand.root.style.order=-1;             /* always above call bands */
+  fireBand.time.textContent=phoneStamp(fireStart);
+  fireIconNormal.style.display="none";
+  fireIconAlarm.style.display="";
+  fireLbl.textContent="Fire - Zone 1";
+  fireBtn.classList.add("alarm");
+  annKey=null; render();
+  setTimeout(fireOff,FIRE.duration);
+}
+function fireOff(){
+  if(!fireActive) return;
+  fireActive=false; fireStart=null;
+  if(fireRow){fireRow.root.remove();fireRow=null;}
+  if(fireBand){fireBand.root.remove();fireBand=null;}
+  fireIconNormal.style.display="";
+  fireIconAlarm.style.display="none";
+  fireLbl.textContent="Fire";
+  fireBtn.classList.remove("alarm");
+  annKey=null; render();                     /* revert to existing calls / idle */
+}
+setInterval(fireOn,FIRE.period);
+fireBtn.addEventListener("click",()=>{ fireActive?fireOff():fireOn(); });
+
+/* ===== Persistent nodes (no rebuild, so nothing flashes) ===== */
+const crowEls=new Map(), bandEls=new Map(), repEls=new Map();
+
+/* console band — mirrors the mobile band, without the icon */
+function makeCrow(k){
+  const T=TYPES[k];
+  const root=document.createElement("div");
+  root.className="cband";
+  root.style.setProperty("--bandbg",T.band);
+  root.style.setProperty("--bandfg",T.bandFg);
+
+  const time=document.createElement("div"); time.className="cband-time";
+
+  const main=document.createElement("div"); main.className="cband-main";
+  const tx=document.createElement("div");   tx.className="cband-tx";
+  const nm=document.createElement("div");   nm.className="cband-nm";
+  const mn=document.createElement("div");   mn.className="cband-mn";
+  tx.append(nm,mn);
+  const ch=document.createElement("div");   ch.className="cband-ch"; ch.textContent="\u276F";
+  main.append(tx,ch);
+
+  const st=document.createElement("div");   st.className="cband-st";
+  const sl=document.createElement("span");  sl.textContent="Waiting.";
+  const sd=document.createElement("span");  sd.className="dur";
+  st.append(sl,sd);
+
+  root.append(time,main,st); activeBody.appendChild(root);
+  return {root,time,nm,mn,sd};
+}
+function makeBand(k){
+  const T=TYPES[k];
+  const root=document.createElement("div");
+  root.className="band";
+  root.style.setProperty("--bandbg",T.band);
+  root.style.setProperty("--bandfg",T.bandFg);
+
+  const time=document.createElement("div"); time.className="band-time";
+
+  const main=document.createElement("div"); main.className="band-main";
+  const ic=document.createElement("div");   ic.className="band-ic";
+  ic.innerHTML='<svg viewBox="0 0 24 24" fill="#5f6a71"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/></svg>';
+  if(T.priority===2){const pip=document.createElement("span");pip.className="pip";ic.appendChild(pip);}
+  const tx=document.createElement("div");   tx.className="band-tx";
+  const nm=document.createElement("div");   nm.className="band-nm";
+  const mn=document.createElement("div");   mn.className="band-mn";
+  tx.append(nm,mn);
+  const ch=document.createElement("div");   ch.className="band-ch"; ch.textContent="\u276F";
+  main.append(ic,tx,ch);
+
+  const st=document.createElement("div");   st.className="band-st";
+  const sl=document.createElement("span");  sl.textContent="Waiting.";
+  const sd=document.createElement("span");  sd.className="dur";
+  st.append(sl,sd);
+
+  root.append(time,main,st); phBands.appendChild(root);
+  return {root,time,nm,mn,sd};
+}
+function makeRepRow(row){
+  const tr=document.createElement("tr"); tr.className="live";
+  const td=()=>document.createElement("td");
+  const a=td(); a.className="mono"; a.textContent=row.date;
+  const b=td(); b.className="mono"; b.textContent=row.time;
+  const c=td(); c.className="mono";
+  const d=td(), e=td();
+  tr.append(a,b,c,d,e);
+  repBody.insertBefore(tr,repBody.firstChild);
+  return {tr,durCell:c,nameCell:d,cliCell:e};
+}
+
+/* ===== Actions ===== */
+function raise(k){
+  if(active.has(k)) return;
+  const now=new Date();
+  const row={id:++rowSeq,key:k,date:repDate(now),time:repTime(now),start:now,end:null,name:nameFor(k)};
+  rows.unshift(row);
+  repEls.set(row.id,makeRepRow(row));
+  active.set(k,{raisedAt:now,rowId:row.id,stamp:phoneStamp(now)});
+  cycleIndex=0; render(); restartCycle();
+}
+function cancel(k){
+  if(!active.has(k)) return;
+  const st=active.get(k), row=rows.find(r=>r.id===st.rowId);
+  if(row){row.end=new Date();row.name=nameFor(k);}
+  active.delete(k);
+  const c=crowEls.get(k); if(c){c.root.remove();crowEls.delete(k);}
+  const b=bandEls.get(k); if(b){b.root.remove();bandEls.delete(k);}
+  cycleIndex=0; render(); restartCycle();
+}
+function restartCycle(){
+  clearInterval(cycleTimer);
+  if(active.size>1) cycleTimer=setInterval(()=>{cycleIndex=(cycleIndex+1)%active.size;renderCDDU();},CYCLE_MS);
+}
+
+/* ===== Render ===== */
+function renderLights(){
+  const q=queue();
+  segs.forEach((seg,i)=>{
+    const k=q[i], lit=seg.querySelector(".seg-lit");
+    seg.className="seg";
+    if(k){lit.style.setProperty("--c",TYPES[k].colour);seg.classList.add("lit");if(TYPES[k].flash)seg.classList.add(TYPES[k].flash);}
+  });
+  /* single lamp mirrors the top MSODL segment only */
+  const top=q[0];
+  lampEl.className="lamp";
+  if(top){
+    lampLit.style.setProperty("--c",TYPES[top].colour);
+    lampEl.classList.add("lit");
+    if(TYPES[top].flash) lampEl.classList.add(TYPES[top].flash);
+  }
+}
+function renderCDDU(){
+  if(fireActive){ setMessage(FIRE.text,FIRE.colour); return; }   /* fire overrides everything */
+  const q=queue();
+  if(!q.length){setMessage(idleStamp(new Date()),LED_IDLE);return;}
+  if(cycleIndex>=q.length) cycleIndex=0;
+  setMessage(nameFor(q[cycleIndex]),TYPES[q[cycleIndex]].colour);
+}
+function renderPoints(){
+  Object.keys(TYPES).forEach(k=>{
+    const el=pointEls[k], on=active.has(k), t=el.querySelector(".stxt");
+    el.classList.toggle("active",on);
+    const want=on?TYPES[k].name+"  "+elapsed(Date.now()-active.get(k).raisedAt):"Idle";
+    if(t.textContent!==want) t.textContent=want;
+  });
+}
+function set(el,prop,val){ if(el[prop]!==val) el[prop]=val; }
+
+function renderStation(){
+  const q=queue(), now=new Date(), site=siteInput.value||"Site";
+  set(consoleClock,"textContent",p2(now.getHours())+":"+p2(now.getMinutes()));
+  set(consoleSite,"textContent",site.toUpperCase());
+  set(phSysTime,"textContent",clock12(now));
+  set(phAsset,"textContent",site);
+
+  activeEmpty.style.display=q.length?"none":"";
+  phNone.style.display=(q.length||fireActive)?"none":"";
+  set(activeN,"textContent",String(q.length));
+  set(otherN,"textContent",fireActive?"1":"0");
+  set(consoleCount,"textContent",q.length===0?"No active calls":(q.length===1?"1 active call":q.length+" active calls"));
+  const phTot=q.length+(fireActive?1:0);
+  set(phFoot,"textContent",phTot===0?"No alarms":(phTot===1?"1 alarm":phTot+" alarms"));
+  navAlarm.classList.toggle("hot",phTot>0);
+
+  if(fireActive&&fireStart){
+    const fms=Date.now()-fireStart.getTime(), fmin="Mins:"+Math.floor(fms/60000), fel=elapsed(fms);
+    set(fireRow.mn,"textContent",fmin);
+    set(fireRow.st,"textContent",fel);
+    set(fireBand.mn,"textContent",fmin);
+    set(fireBand.sd,"textContent",fel);
+  }
+
+  q.forEach((k,i)=>{
+    const T=TYPES[k], st=active.get(k), ms=Date.now()-st.raisedAt;
+    const age=elapsed(ms), mins=Math.floor(ms/60000), nm=nameFor(k);
+
+    let c=crowEls.get(k); if(!c){c=makeCrow(k);crowEls.set(k,c);}
+    c.root.style.order=i;
+    set(c.time,"textContent",st.stamp);
+    set(c.nm,"textContent",nm);
+    set(c.mn,"textContent","Mins:"+mins);
+    set(c.sd,"textContent",age);
+
+    let b=bandEls.get(k); if(!b){b=makeBand(k);bandEls.set(k,b);}
+    b.root.style.order=i;
+    set(b.time,"textContent",st.stamp);
+    set(b.nm,"textContent",nm);
+    set(b.mn,"textContent","Mins:"+mins);
+    set(b.sd,"textContent",age);
+  });
+}
+function renderReport(){
+  const site=siteInput.value||"";
+  repNone.style.display=rows.length?"none":"";
+  set(repTotal,"textContent",String(rows.length));
+  if(rows.length){
+    const dmy=d=>d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
+    set(repRange,"textContent",dmy(rows[rows.length-1].start)+" 12:00:00 AM to "+dmy(rows[0].start)+" 11:59:59 PM");
+  }else set(repRange,"textContent","\u2014");
+  rows.forEach(r=>{
+    const e=repEls.get(r.id); if(!e) return;
+    const live=!r.end, d=live?(Date.now()-r.start.getTime()):(r.end-r.start);
+    set(e.durCell,"textContent",dur(d)+(live?" \u25CF":""));
+    set(e.nameCell,"textContent",r.name);
+    set(e.cliCell,"textContent",site);
+    e.tr.classList.toggle("live",live);
+  });
+}
+
+function render(){renderLights();renderCDDU();renderPoints();renderStation();renderReport();tone();}
+setInterval(()=>{renderPoints();renderStation();renderReport();if(!active.size)renderCDDU();},1000);
+
+/* ===== Tones ===== */
+let soundOn=true, audioCtx=null, toneTimer=null, tonePlaying=null;
+function ensureAudio(){
+  if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(AC)audioCtx=new AC();}
+  if(audioCtx&&audioCtx.state==="suspended")audioCtx.resume();
+}
+function burst(s){
+  if(!audioCtx)return;
+  let t=audioCtx.currentTime+0.01;
+  for(let i=0;i<s.n;i++){
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type="triangle";o.frequency.value=s.f;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.16,t+0.012);
+    g.gain.setValueAtTime(0.16,t+s.on-0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+s.on);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t);o.stop(t+s.on+0.02);
+    t+=s.on+s.gap;
+  }
+}
+function tone(){
+  const top=queue()[0]||null;
+  if(top===tonePlaying&&(top===null||toneTimer))return;
+  clearInterval(toneTimer);toneTimer=null;tonePlaying=top;
+  if(!top||!soundOn)return;
+  ensureAudio();
+  const s=TYPES[top].tone;burst(s);toneTimer=setInterval(()=>burst(s),s.every);
+}
+
+/* ===== Wiring ===== */
+document.querySelectorAll(".point").forEach(el=>{
+  const k=el.dataset.type;
+  el.querySelector('[data-action="raise"]').addEventListener("click",()=>{ensureAudio();raise(k);});
+  el.querySelector('[data-action="cancel"]').addEventListener("click",()=>cancel(k));
+  el.querySelector("input").addEventListener("input",()=>{
+    const st=active.get(k);
+    if(st){const r=rows.find(x=>x.id===st.rowId);if(r)r.name=nameFor(k);}
+    annKey=null;renderCDDU();renderStation();renderReport();
+  });
+});
+siteInput.addEventListener("input",()=>{renderStation();renderReport();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;
+  e.currentTarget.setAttribute("aria-pressed",String(soundOn));
+  document.getElementById("soundLbl").textContent=soundOn?"Tones on":"Tones off";
+  tonePlaying="__f__";if(soundOn)ensureAudio();tone();
+});
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  active.clear();rows.length=0;rowSeq=0;cycleIndex=0;clearInterval(cycleTimer);
+  crowEls.forEach(c=>c.root.remove());crowEls.clear();
+  bandEls.forEach(b=>b.root.remove());bandEls.clear();
+  repEls.clear();repBody.innerHTML="";
+  render();
+});
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT")return;
+  const k={"1":"emergency","2":"call","3":"staff"}[e.key];
+  if(!k)return;
+  ensureAudio();
+  active.has(k)?cancel(k):raise(k);
+});
+
+render();
+</script>
+</body>
+</html>
