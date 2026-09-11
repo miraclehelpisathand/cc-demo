@@ -99,7 +99,7 @@
     background:linear-gradient(#ffffff,#eef0f2);border-radius:calc(.55 * var(--u));padding:calc(.36 * var(--u));
     box-shadow:0 14px 28px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.9) inset,0 -3px 8px rgba(0,0,0,.06) inset;}
   .plate-face{position:relative;width:100%;height:100%;
-    background:linear-gradient(160deg,#4fb6e8 0%,#33a4dd 55%,#2b96ce 100%);
+    background:linear-gradient(160deg,var(--face-hi) 0%,var(--face-mid) 55%,var(--face-lo) 100%);
     border-radius:calc(.36 * var(--u));
     box-shadow:inset 0 2px 6px rgba(0,0,0,.18), inset 0 -1px 0 rgba(255,255,255,.25);}
 
@@ -107,7 +107,7 @@
     top:calc(2.05 * var(--u));width:calc(4.35 * var(--u));height:calc(4.35 * var(--u));border-radius:50%;
     cursor:pointer;touch-action:manipulation;user-select:none;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(.05 * var(--u));
-    color:#fff;background:radial-gradient(circle at 34% 26%, var(--btn-hi), var(--btn-lo) 72%);
+    color:var(--cross-col,#fff);background:radial-gradient(circle at 34% 26%, var(--btn-hi), var(--btn-lo) 72%);
     box-shadow:0 0 0 calc(.055 * var(--u)) rgba(255,255,255,.95),0 6px 14px rgba(0,0,0,.34),
                inset 0 3px 6px rgba(255,255,255,.4),inset 0 -5px 10px rgba(0,0,0,.26);
     transition:box-shadow .18s ease, filter .18s ease, transform .07s ease;}
@@ -115,7 +115,8 @@
   .call-btn:focus-visible{outline:3px solid #fff;outline-offset:5px;}
   .call-btn .plus{width:42%;height:42%;margin-bottom:calc(.06 * var(--u));}
   .call-btn .lbl{font-size:calc(.32 * var(--u));font-weight:800;letter-spacing:.09em;line-height:1.15;
-    text-align:center;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.35);padding:0 calc(.2 * var(--u));}
+    text-align:center;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.35);padding:0 calc(.2 * var(--u));
+    color:var(--label-col,#fff);max-width:100%;overflow-wrap:break-word;hyphens:auto;}
   .point.active .call-btn{filter:brightness(1.14);
     box-shadow:0 0 0 calc(.055 * var(--u)) #fff,0 0 24px 6px var(--btn-glow),
                inset 0 3px 6px rgba(255,255,255,.45),inset 0 -5px 10px rgba(0,0,0,.24);
@@ -141,10 +142,28 @@
       box-shadow:0 3px 7px rgba(0,0,0,.3),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -3px 5px rgba(0,0,0,.12);}
   }
   .reassure{width:calc(.6 * var(--u));height:calc(.14 * var(--u));border-radius:calc(.07 * var(--u));
-            background:#8b969d;transition:background .2s;}
-  .point.active .reassure{background:#e02419;}
+            background:#8b969d;}
   .cancel-btn .ctxt{font-size:calc(.19 * var(--u));font-weight:800;letter-spacing:.08em;color:#5b6a73;}
   .point.active .cancel-btn .ctxt{color:#3b4a53;}
+
+  /* panel-mount jack socket — chrome hex nut with bore, mirrors the cancel button */
+  .socket{position:absolute;right:calc(.78 * var(--u));top:calc(7.67 * var(--u));
+    width:calc(1.75 * var(--u));height:calc(1.75 * var(--u));display:none;pointer-events:none;}
+  .point.socket-on .socket{display:block;}
+  .socket-hex{position:absolute;inset:0;
+    clip-path:polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%);
+    background:
+      linear-gradient(148deg,#ffffff 0%,#e8ecee 16%,#b9c1c6 36%,#8e979d 50%,
+                      #f2f5f6 63%,#c6ced3 80%,#949da3 92%,#6f777c 100%);
+    filter:drop-shadow(0 calc(.05 * var(--u)) calc(.09 * var(--u)) rgba(0,0,0,.45));}
+  .socket-hex::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(200deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 38%);}
+  .socket-hole{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:54%;height:54%;border-radius:50%;
+    background:radial-gradient(circle at 44% 30%, #63696d 0%, #33383b 34%, #16191b 66%, #08090a 100%);
+    box-shadow:inset 0 calc(.07 * var(--u)) calc(.13 * var(--u)) rgba(0,0,0,.95),
+               inset 0 calc(-.035 * var(--u)) calc(.06 * var(--u)) rgba(255,255,255,.16),
+               0 0 0 1px rgba(0,0,0,.4);}
 
   .status-line{font-size:9.5px;letter-spacing:1px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);
                display:flex;align-items:center;gap:6px;min-height:14px;white-space:nowrap;}
@@ -158,6 +177,57 @@
     text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.34);
     border:1px solid var(--panel-line);border-radius:7px;padding:7px 8px;}
   .msg-field input:focus{outline:none;border-color:var(--accent);background:rgba(0,0,0,.5);}
+
+  .sock-field{width:100%;display:flex;align-items:center;gap:7px;margin-top:1px;cursor:pointer;user-select:none;}
+  .sock-field input{appearance:none;width:14px;height:14px;flex:0 0 auto;margin:0;cursor:pointer;
+    border:1px solid var(--panel-line);border-radius:4px;background:rgba(0,0,0,.34);
+    position:relative;transition:background .15s,border-color .15s;}
+  .sock-field input:checked{background:var(--accent);border-color:var(--accent);}
+  .sock-field input:checked::after{content:"";position:absolute;left:4px;top:1px;
+    width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);}
+  .sock-field input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .sock-field span{font-size:8.5px;letter-spacing:1.2px;font-weight:700;
+                   color:var(--ink-dim);text-transform:uppercase;}
+
+  /* ================= Call point configurator ================= */
+  .points-foot{margin-top:auto;padding-top:11px;display:flex;justify-content:flex-start;}
+  .cfg-btn{appearance:none;border:1px solid var(--panel-line);background:rgba(255,255,255,.06);
+    color:var(--ink);font:inherit;font-size:11px;font-weight:600;letter-spacing:.4px;
+    padding:7px 12px;border-radius:8px;cursor:pointer;touch-action:manipulation;user-select:none;
+    display:flex;align-items:center;gap:7px;transition:background .15s,border-color .15s;}
+  .cfg-btn:hover{background:rgba(255,255,255,.12);}
+  .cfg-btn[aria-expanded="true"]{border-color:var(--accent);color:#bfe6fb;background:rgba(53,168,224,.16);}
+
+  .cfg{margin-top:11px;border:1px solid var(--panel-line);border-radius:11px;
+       background:rgba(0,0,0,.26);padding:12px 13px 13px;display:none;}
+  .cfg.open{display:block;}
+  .cfg-sec{font-size:8.5px;font-weight:700;letter-spacing:1.5px;color:var(--ink-dim);
+           text-transform:uppercase;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .cfg-sec::after{content:"";flex:1;height:1px;background:var(--panel-line);}
+  .cfg-sec + .cfg-sec, .cfg-grid + .cfg-sec, .cfg-row + .cfg-sec{margin-top:14px;}
+
+  .cfg-row{display:flex;align-items:center;gap:9px;}
+  .cfg-grid{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:7px 10px;align-items:center;}
+  .cfg-grid .rh{font-size:9px;font-weight:700;letter-spacing:1.1px;color:var(--ink-dim);
+                text-transform:uppercase;white-space:nowrap;}
+  .cfg-grid .ch{font-size:8.5px;font-weight:800;letter-spacing:.9px;color:#c3d3dd;
+                text-transform:uppercase;text-align:center;line-height:1.25;}
+  .cfg-grid .ch small{display:block;font-size:7.5px;font-weight:600;color:#7d909d;letter-spacing:.6px;margin-top:1px;}
+
+  .cfg input[type=color]{appearance:none;-webkit-appearance:none;border:0;padding:0;
+    width:100%;height:25px;min-width:34px;background:none;border-radius:6px;cursor:pointer;}
+  .cfg input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  .cfg input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.28);border-radius:6px;}
+  .cfg input[type=color]::-moz-color-swatch{border:1px solid rgba(255,255,255,.28);border-radius:6px;}
+  .cfg input[type=text]{width:100%;font:inherit;font-size:11px;font-weight:600;letter-spacing:.5px;
+    text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.4);
+    border:1px solid var(--panel-line);border-radius:6px;padding:6px 7px;}
+  .cfg input[type=text]:focus{outline:none;border-color:var(--accent);}
+  .cfg-note{font-size:9.5px;color:#6b7c87;margin-top:11px;line-height:1.5;}
+  .cfg-revert{appearance:none;border:1px solid var(--panel-line);background:rgba(255,255,255,.06);
+    color:var(--ink);font:inherit;font-size:10.5px;font-weight:600;letter-spacing:.4px;
+    padding:6px 11px;border-radius:7px;cursor:pointer;margin-top:11px;}
+  .cfg-revert:hover{background:rgba(255,255,255,.12);}
 
   /* ================= Corridor : lights on top, CDDU beneath ================= */
   .corridor{display:flex;flex-direction:column;align-items:center;gap:calc(.5 * var(--u));}
@@ -395,7 +465,7 @@
     <h2 class="panel-title">Call points</h2>
     <div class="points">
 
-      <div class="point" data-type="emergency" style="--btn-hi:#ff5c6d;--btn-lo:#cf1e33;--btn-glow:rgba(255,47,66,.8);--st:var(--red);">
+      <div class="point" data-type="emergency">
         <div class="faceplate"><div class="plate-face">
           <button class="call-btn" data-action="raise" aria-label="Emergency call">
             <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
@@ -405,15 +475,23 @@
           <button class="cancel-btn" data-action="cancel" aria-label="Cancel emergency call">
             <span class="reassure"></span><span class="ctxt">CANCEL</span>
           </button>
+          <div class="socket" aria-hidden="true">
+            <div class="socket-hex"></div>
+            <div class="socket-hole"></div>
+          </div>
         </div></div>
         <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
         <div class="msg-field">
           <label for="txt-emergency">Alarm name</label>
           <input id="txt-emergency" type="text" maxlength="40" value="EMERGENCY" autocomplete="off" spellcheck="false">
         </div>
+        <label class="sock-field" for="sock-emergency">
+          <input id="sock-emergency" type="checkbox">
+          <span>Socket</span>
+        </label>
       </div>
 
-      <div class="point" data-type="call" style="--btn-hi:#8fd97a;--btn-lo:#3f9c33;--btn-glow:rgba(63,209,92,.8);--st:var(--green);">
+      <div class="point" data-type="call">
         <div class="faceplate"><div class="plate-face">
           <button class="call-btn" data-action="raise" aria-label="Normal call">
             <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
@@ -423,15 +501,23 @@
           <button class="cancel-btn" data-action="cancel" aria-label="Cancel normal call">
             <span class="reassure"></span><span class="ctxt">CANCEL</span>
           </button>
+          <div class="socket" aria-hidden="true">
+            <div class="socket-hex"></div>
+            <div class="socket-hole"></div>
+          </div>
         </div></div>
         <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
         <div class="msg-field">
           <label for="txt-call">Alarm name</label>
           <input id="txt-call" type="text" maxlength="40" value="CALL" autocomplete="off" spellcheck="false">
         </div>
+        <label class="sock-field" for="sock-call">
+          <input id="sock-call" type="checkbox">
+          <span>Socket</span>
+        </label>
       </div>
 
-      <div class="point" data-type="staff" style="--btn-hi:#ffd95c;--btn-lo:#e0a100;--btn-glow:rgba(255,184,26,.8);--st:var(--amber);">
+      <div class="point" data-type="staff">
         <div class="faceplate"><div class="plate-face">
           <button class="call-btn" data-action="raise" aria-label="Staff assist call">
             <svg class="plus" viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-width="17" stroke-linecap="round">
@@ -441,14 +527,75 @@
           <button class="cancel-btn" data-action="cancel" aria-label="Cancel staff assist call">
             <span class="reassure"></span><span class="ctxt">CANCEL</span>
           </button>
+          <div class="socket" aria-hidden="true">
+            <div class="socket-hex"></div>
+            <div class="socket-hole"></div>
+          </div>
         </div></div>
         <div class="status-line"><span class="sdot"></span><span class="stxt">Idle</span></div>
         <div class="msg-field">
           <label for="txt-staff">Alarm name</label>
           <input id="txt-staff" type="text" maxlength="40" value="STAFF ASSIST" autocomplete="off" spellcheck="false">
         </div>
+        <label class="sock-field" for="sock-staff">
+          <input id="sock-staff" type="checkbox">
+          <span>Socket</span>
+        </label>
       </div>
 
+    </div>
+
+    <div class="points-foot">
+      <button class="cfg-btn" id="cfgBtn" aria-expanded="false" aria-controls="cfgPanel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.9 4a7 7 0 00-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 00-2-1.2L16 3H8l-.4 2.6a7 7 0 00-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 000 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 002 1.2L8 21h8l.4-2.6a7 7 0 002-1.2l2.4 1 2-3.5-2-1.5c.06-.4.1-.8.1-1.2z"/>
+        </svg>
+        Configurator
+      </button>
+    </div>
+
+    <div class="cfg" id="cfgPanel">
+      <div class="cfg-sec">Faceplate</div>
+      <div class="cfg-row">
+        <span class="rh" style="font-size:9px;font-weight:700;letter-spacing:1.1px;color:var(--ink-dim);text-transform:uppercase;">Background &mdash; all points</span>
+        <input type="color" id="cfgFace" value="#33a4dd" style="max-width:74px" aria-label="Faceplate background colour">
+      </div>
+
+      <div class="cfg-sec">Per call point</div>
+      <div class="cfg-grid">
+        <span class="rh"></span>
+        <span class="ch">Call point 1<small>Emergency</small></span>
+        <span class="ch">Call point 2<small>Call</small></span>
+        <span class="ch">Call point 3<small>Staff assist</small></span>
+
+        <span class="rh">Button</span>
+        <input type="color" id="cfgBtn-emergency" value="#e02a3c" aria-label="Call point 1 button colour">
+        <input type="color" id="cfgBtn-call"      value="#4aa83a" aria-label="Call point 2 button colour">
+        <input type="color" id="cfgBtn-staff"     value="#eeab0d" aria-label="Call point 3 button colour">
+
+        <span class="rh">Cross</span>
+        <input type="color" id="cfgCross-emergency" value="#ffffff" aria-label="Call point 1 cross colour">
+        <input type="color" id="cfgCross-call"      value="#ffffff" aria-label="Call point 2 cross colour">
+        <input type="color" id="cfgCross-staff"     value="#ffffff" aria-label="Call point 3 cross colour">
+
+        <span class="rh">Text</span>
+        <input type="color" id="cfgText-emergency" value="#ffffff" aria-label="Call point 1 text colour">
+        <input type="color" id="cfgText-call"      value="#ffffff" aria-label="Call point 2 text colour">
+        <input type="color" id="cfgText-staff"     value="#ffffff" aria-label="Call point 3 text colour">
+
+        <span class="rh">Label</span>
+        <input type="text" id="cfgLbl-emergency" maxlength="18" value="EMERGENCY" autocomplete="off" spellcheck="false" aria-label="Call point 1 button label">
+        <input type="text" id="cfgLbl-call"      maxlength="18" value="CALL" autocomplete="off" spellcheck="false" aria-label="Call point 2 button label">
+        <input type="text" id="cfgLbl-staff"     maxlength="18" value="STAFF ASSIST" autocomplete="off" spellcheck="false" aria-label="Call point 3 button label">
+      </div>
+
+      <button class="cfg-revert" id="cfgRevert">Revert to defaults</button>
+      <p class="cfg-note">
+        Button colour sets the face of the round button; the demonstrator derives the
+        raised highlight and glow from it automatically. Label text changes what is
+        printed on the button only &mdash; the alarm name sent to the CDDU, console,
+        mobile and report is still the text box under each call point.
+      </p>
     </div>
   </section>
 
@@ -603,7 +750,10 @@ const TYPES = {
               tone:{f:640,n:1,on:.18,gap:0,every:3200} }
 };
 
-const CHARS=13, COLS=CHARS*6, ROWS=7, SCROLL_MS=55, CYCLE_MS=2400;
+const CHARS=13, COLS=CHARS*6, ROWS=7, SCROLL_MS=55;
+const SCROLL_MIN=12;        /* 12 characters or fewer are shown static */
+const HOLD_SCROLL_MS=1200;  /* pause after a scroll finishes */
+const HOLD_STATIC_MS=2200;  /* dwell on a short static message */
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const LED_IDLE=getComputedStyle(document.documentElement).getPropertyValue("--led-idle").trim()||"#c9e618";
 
@@ -716,28 +866,86 @@ function textToColumns(str){
 const blankCols=n=>Array.from({length:n},()=>new Array(ROWS).fill(false));
 const sanitise=s=>(s||"").split("").map(c=>FONT[c]?c:(FONT[c.toUpperCase()]?c.toUpperCase():" ")).join("");
 
-let annCols=blankCols(COLS), annScroll=false, annOffset=0, annKey=null;
+/* ---------------------------------------------------------------------------
+   CDDU presentation rules
+     - 12 characters or fewer : shown static, LEFT JUSTIFIED
+     - longer than 12         : scrolls left once and STOPS with the last
+                                character resting at the right of the display,
+                                holds briefly, then the next alarm is shown
+   --------------------------------------------------------------------------- */
+let annCols=blankCols(COLS), annMode="static", annOffset=0, annMaxOffset=0,
+    annKey=null, annDone=false, annHoldUntil=0;
+
 function setMessage(text,colour){
   const clean=sanitise(text).replace(/\s+$/,"")||" ";
   const k=clean+"|"+colour;
-  if(k===annKey) return;
+  if(k===annKey) return;                 /* unchanged — keep scroll progress */
   annKey=k;
   matrixEl.style.setProperty("--led",colour);
-  if(clean.length<=CHARS){
-    const pad=CHARS-clean.length, l=Math.floor(pad/2);
-    annCols=textToColumns(" ".repeat(l)+clean+" ".repeat(pad-l)); annScroll=false; annOffset=0;
+  annOffset=0; annDone=false; annHoldUntil=0;
+
+  if(clean.length<=SCROLL_MIN){
+    /* left justified: message at column 0, blank padding to the right */
+    annMode="static";
+    annCols=textToColumns(clean+" ".repeat(Math.max(0,CHARS-clean.length)));
+    annMaxOffset=0;
   }else{
-    annCols=blankCols(COLS).concat(textToColumns(clean)); annScroll=true; annOffset=0;
+    /* scroll once, stopping when the final character is on the display.
+       the trailing inter-character gap is trimmed so the last letter
+       lands flush against the right-hand edge                          */
+    annMode="scroll";
+    annCols=textToColumns(clean).slice(0,clean.length*6-1);
+    annMaxOffset=Math.max(0,annCols.length-COLS);
+    /* a 13 character message still fits the window — nothing to scroll,
+       so show it left justified and give it the normal static dwell */
+    if(annMaxOffset===0) annMode="static";
   }
   paint();
 }
+
 function paint(){
   for(let c=0;c<COLS;c++){
-    const src=annScroll?annCols[(annOffset+c)%annCols.length]:(annCols[c]||[]);
+    const src = annMode==="scroll" ? annCols[annOffset+c] : annCols[c];
     for(let r=0;r<ROWS;r++) dotAt(r,c).classList.toggle("on",!!(src&&src[r]));
   }
 }
-setInterval(()=>{ if(annScroll){annOffset=(annOffset+1)%annCols.length;paint();} },SCROLL_MS);
+
+/* messages currently in rotation on the CDDU */
+function cdduMessages(){
+  if(fireActive) return [{t:FIRE.text,c:FIRE.colour}];
+  const q=queue();
+  if(!q.length) return [{t:idleStamp(new Date()),c:LED_IDLE}];
+  return q.map(k=>({t:nameFor(k),c:TYPES[k].colour}));
+}
+
+function advanceCDDU(){
+  const n=cdduMessages().length;
+  if(n>1){                                  /* show the next alarm */
+    cycleIndex=(cycleIndex+1)%n;
+    annKey=null;
+    renderCDDU();
+  }else if(annMode==="scroll"){             /* single long message — replay it */
+    annOffset=0; annDone=false; annHoldUntil=0; paint();
+  }else{                                    /* single short message — keep holding */
+    annHoldUntil=Date.now()+HOLD_STATIC_MS;
+  }
+}
+
+/* single driver: steps the scroll, then holds, then advances */
+setInterval(()=>{
+  const now=Date.now();
+  if(annMode==="scroll" && annOffset<annMaxOffset){
+    annOffset++; paint();
+    if(annOffset>=annMaxOffset){ annDone=true; annHoldUntil=now+HOLD_SCROLL_MS; }
+    return;
+  }
+  if(!annDone){
+    annDone=true;
+    annHoldUntil=now+(annMode==="scroll"?HOLD_SCROLL_MS:HOLD_STATIC_MS);
+    return;
+  }
+  if(now>=annHoldUntil) advanceCDDU();
+},SCROLL_MS);
 
 /* ===== Formatters ===== */
 const p2=n=>String(n).padStart(2,"0");
@@ -755,7 +963,7 @@ function clock12(d){ let h=d.getHours(); h=h%12||12; return h+":"+p2(d.getMinute
 
 /* ===== State ===== */
 const active=new Map();
-let cycleIndex=0, cycleTimer=null, rowSeq=0;
+let cycleIndex=0, rowSeq=0;
 const rows=[];
 
 const pointEls={};
@@ -949,9 +1157,11 @@ function cancel(k){
   const b=bandEls.get(k); if(b){b.root.remove();bandEls.delete(k);}
   cycleIndex=0; render(); restartCycle();
 }
+/* the CDDU driver handles message rotation itself, so this only needs to
+   keep the index in range when the queue changes */
 function restartCycle(){
-  clearInterval(cycleTimer);
-  if(active.size>1) cycleTimer=setInterval(()=>{cycleIndex=(cycleIndex+1)%active.size;renderCDDU();},CYCLE_MS);
+  const n=cdduMessages().length;
+  if(cycleIndex>=n) cycleIndex=0;
 }
 
 /* ===== Render ===== */
@@ -972,11 +1182,10 @@ function renderLights(){
   }
 }
 function renderCDDU(){
-  if(fireActive){ setMessage(FIRE.text,FIRE.colour); return; }   /* fire overrides everything */
-  const q=queue();
-  if(!q.length){setMessage(idleStamp(new Date()),LED_IDLE);return;}
-  if(cycleIndex>=q.length) cycleIndex=0;
-  setMessage(nameFor(q[cycleIndex]),TYPES[q[cycleIndex]].colour);
+  const msgs=cdduMessages();                 /* fire overrides, else calls, else idle */
+  if(cycleIndex>=msgs.length) cycleIndex=0;
+  const m=msgs[cycleIndex];
+  setMessage(m.t,m.c);
 }
 function renderPoints(){
   Object.keys(TYPES).forEach(k=>{
@@ -1083,15 +1292,97 @@ function tone(){
 }
 
 /* ===== Wiring ===== */
+/* ===== Call point configurator ===== */
+const CFG_KEYS=["emergency","call","staff"];
+const cfgPanel=document.getElementById("cfgPanel");
+const cfgBtnEl=document.getElementById("cfgBtn");
+const cfgFace=document.getElementById("cfgFace");
+const cfgEl=(p,k)=>document.getElementById(p+"-"+k);
+
+/* colour maths so the moulded highlight and glow follow the chosen colour */
+const hex2rgb=h=>{const n=parseInt(h.slice(1),16);return [n>>16&255,n>>8&255,n&255];};
+const rgb2hex=(r,g,b)=>"#"+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v)))
+                                          .toString(16).padStart(2,"0")).join("");
+const lighten=(h,f)=>{const [r,g,b]=hex2rgb(h);return rgb2hex(r+(255-r)*f,g+(255-g)*f,b+(255-b)*f);};
+const darken =(h,f)=>{const [r,g,b]=hex2rgb(h);return rgb2hex(r*(1-f),g*(1-f),b*(1-f));};
+const rgba   =(h,a)=>{const [r,g,b]=hex2rgb(h);return `rgba(${r},${g},${b},${a})`;};
+
+function applyFace(hex){
+  document.querySelectorAll(".point").forEach(el=>{
+    el.style.setProperty("--face-hi", lighten(hex,.22));
+    el.style.setProperty("--face-mid",hex);
+    el.style.setProperty("--face-lo", darken(hex,.12));
+  });
+}
+function applyPoint(k){
+  const el=pointEls[k];
+  const btn=cfgEl("cfgBtn",k).value;
+  el.style.setProperty("--btn-hi",  lighten(btn,.30));
+  el.style.setProperty("--btn-lo",  darken(btn,.18));
+  el.style.setProperty("--btn-glow",rgba(btn,.8));
+  el.style.setProperty("--st",      btn);
+  el.style.setProperty("--cross-col",cfgEl("cfgCross",k).value);
+  el.style.setProperty("--label-col",cfgEl("cfgText",k).value);
+  /* label renders on its own lines where a space is given, e.g. "STAFF ASSIST" */
+  const lbl=el.querySelector(".call-btn .lbl");
+  const txt=cfgEl("cfgLbl",k).value.trim()||TYPES[k].name.toUpperCase();
+  if(lbl.dataset.txt!==txt){
+    lbl.dataset.txt=txt;
+    lbl.textContent="";
+    txt.split(/\s+/).forEach((w,i)=>{
+      if(i) lbl.appendChild(document.createElement("br"));
+      lbl.appendChild(document.createTextNode(w));
+    });
+  }
+}
+function applyAllCfg(){ applyFace(cfgFace.value); CFG_KEYS.forEach(applyPoint); }
+
+cfgBtnEl.addEventListener("click",()=>{
+  const open=cfgPanel.classList.toggle("open");
+  cfgBtnEl.setAttribute("aria-expanded",String(open));
+});
+cfgFace.addEventListener("input",()=>applyFace(cfgFace.value));
+CFG_KEYS.forEach(k=>{
+  ["cfgBtn","cfgCross","cfgText","cfgLbl"].forEach(p=>{
+    cfgEl(p,k).addEventListener("input",()=>applyPoint(k));
+  });
+});
+
+/* defaults captured at load so Reset demo can restore every configurable item */
+const DEFAULT_SITE=siteInput.value;
+const DEFAULT_NAMES={};
+Object.keys(TYPES).forEach(k=>{DEFAULT_NAMES[k]=document.getElementById("txt-"+k).value;});
+const DEFAULT_FACE=cfgFace.value;
+const DEFAULT_CFG={};
+CFG_KEYS.forEach(k=>{
+  DEFAULT_CFG[k]={btn:cfgEl("cfgBtn",k).value, cross:cfgEl("cfgCross",k).value,
+                  text:cfgEl("cfgText",k).value, lbl:cfgEl("cfgLbl",k).value};
+});
+function resetCfg(){
+  cfgFace.value=DEFAULT_FACE;
+  CFG_KEYS.forEach(k=>{
+    const d=DEFAULT_CFG[k];
+    cfgEl("cfgBtn",k).value=d.btn;
+    cfgEl("cfgCross",k).value=d.cross;
+    cfgEl("cfgText",k).value=d.text;
+    cfgEl("cfgLbl",k).value=d.lbl;
+  });
+  applyAllCfg();
+}
+document.getElementById("cfgRevert").addEventListener("click",resetCfg);
+applyAllCfg();
+
 document.querySelectorAll(".point").forEach(el=>{
   const k=el.dataset.type;
   el.querySelector('[data-action="raise"]').addEventListener("click",()=>{ensureAudio();raise(k);});
   el.querySelector('[data-action="cancel"]').addEventListener("click",()=>cancel(k));
-  el.querySelector("input").addEventListener("input",()=>{
+  el.querySelector('#txt-'+k).addEventListener("input",()=>{
     const st=active.get(k);
     if(st){const r=rows.find(x=>x.id===st.rowId);if(r)r.name=nameFor(k);}
     annKey=null;renderCDDU();renderStation();renderReport();
   });
+  const sock=el.querySelector('#sock-'+k);
+  sock.addEventListener("change",()=>el.classList.toggle("socket-on",sock.checked));
 });
 siteInput.addEventListener("input",()=>{renderStation();renderReport();});
 document.getElementById("soundBtn").addEventListener("click",e=>{
@@ -1101,10 +1392,31 @@ document.getElementById("soundBtn").addEventListener("click",e=>{
   tonePlaying="__f__";if(soundOn)ensureAudio();tone();
 });
 document.getElementById("resetBtn").addEventListener("click",()=>{
-  active.clear();rows.length=0;rowSeq=0;cycleIndex=0;clearInterval(cycleTimer);
+  /* clear all live state */
+  active.clear();rows.length=0;rowSeq=0;cycleIndex=0;annKey=null;
   crowEls.forEach(c=>c.root.remove());crowEls.clear();
   bandEls.forEach(b=>b.root.remove());bandEls.clear();
   repEls.clear();repBody.innerHTML="";
+  fireOff();
+
+  /* restore every configurable item to its default */
+  siteInput.value=DEFAULT_SITE;
+  Object.keys(TYPES).forEach(k=>{
+    document.getElementById("txt-"+k).value=DEFAULT_NAMES[k];
+    const sock=document.getElementById("sock-"+k);
+    sock.checked=false;                                  /* socket off by default */
+    pointEls[k].classList.remove("socket-on");
+  });
+  if(!soundOn){                                          /* tones back on */
+    soundOn=true;
+    const sb=document.getElementById("soundBtn");
+    sb.setAttribute("aria-pressed","true");
+    document.getElementById("soundLbl").textContent="Tones on";
+  }
+  resetCfg();                                            /* configurator colours + labels */
+  cfgPanel.classList.remove("open");
+  cfgBtnEl.setAttribute("aria-expanded","false");
+  tonePlaying="__f__";
   render();
 });
 document.addEventListener("keydown",e=>{
@@ -1117,5 +1429,5 @@ document.addEventListener("keydown",e=>{
 
 render();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a392e1999a41ad90',t:'MTc4OTA4OTk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
