@@ -22,6 +22,9 @@
     --green:#3fd15c;
     --led-idle:#c9e618;          /* yellow / green LED */
 
+    /* gap between call point faceplates — also used to lock the panel width */
+    --pt-gap:clamp(8px,.8vw,14px);
+
     /* fixed device screen height — console and phone are locked to this so
        neither ever resizes as alarms are added or cleared                  */
     --devh:clamp(250px, calc(11.6 * var(--u) + 78px), 560px);
@@ -77,12 +80,14 @@
   main{
     padding:10px clamp(10px,1.4vw,18px) 12px;
     display:grid;gap:10px;
-    grid-template-columns:auto auto minmax(330px,1fr);
+    grid-template-columns:min-content auto minmax(330px,1fr);
     grid-template-areas:"points corridor station" "log log log";
     align-items:stretch;                 /* equal heights across the top row */
   }
   @media (max-width:1180px){
     main{grid-template-columns:1fr;grid-template-areas:"points" "corridor" "station" "log";}
+    .a-points{width:auto;}          /* stacked layout: full width, not the locked measure */
+    .points{flex-wrap:wrap;}
   }
   .panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:13px;
          padding:11px 13px 13px;display:flex;flex-direction:column;min-width:0;}
@@ -93,8 +98,11 @@
   .a-station{grid-area:station;} .a-log{grid-area:log;}
 
   /* ================= Call points ================= */
-  .points{display:flex;gap:clamp(8px,.8vw,14px);justify-content:center;align-items:flex-start;}
-  .point{display:flex;flex-direction:column;align-items:center;gap:7px;width:calc(7.4 * var(--u));}
+  /* the three faceplates define the panel's width; the configurator below is
+     locked to exactly that measure so opening it only changes the height */
+  .a-points{width:calc(3 * (7.4 * var(--u)) + 2 * var(--pt-gap) + 26px);}
+  .points{display:flex;gap:var(--pt-gap);justify-content:center;align-items:flex-start;}
+  .point{display:flex;flex-direction:column;align-items:center;gap:7px;width:calc(7.4 * var(--u));min-width:0;}
   .faceplate{width:calc(7.4 * var(--u));height:calc(11.6 * var(--u));
     background:linear-gradient(#ffffff,#eef0f2);border-radius:calc(.55 * var(--u));padding:calc(.36 * var(--u));
     box-shadow:0 14px 28px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.9) inset,0 -3px 8px rgba(0,0,0,.06) inset;}
@@ -199,27 +207,30 @@
   .cfg-btn[aria-expanded="true"]{border-color:var(--accent);color:#bfe6fb;background:rgba(53,168,224,.16);}
 
   .cfg{margin-top:11px;border:1px solid var(--panel-line);border-radius:11px;
-       background:rgba(0,0,0,.26);padding:12px 13px 13px;display:none;}
+       background:rgba(0,0,0,.26);padding:12px 13px 13px;display:none;
+       width:100%;min-width:0;overflow:hidden;}
   .cfg.open{display:block;}
   .cfg-sec{font-size:8.5px;font-weight:700;letter-spacing:1.5px;color:var(--ink-dim);
            text-transform:uppercase;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
   .cfg-sec::after{content:"";flex:1;height:1px;background:var(--panel-line);}
   .cfg-sec + .cfg-sec, .cfg-grid + .cfg-sec, .cfg-row + .cfg-sec{margin-top:14px;}
 
-  .cfg-row{display:flex;align-items:center;gap:9px;}
-  .cfg-grid{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:7px 10px;align-items:center;}
+  .cfg-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;}
+  .cfg-grid{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:7px 10px;
+            align-items:center;min-width:0;}
   .cfg-grid .rh{font-size:9px;font-weight:700;letter-spacing:1.1px;color:var(--ink-dim);
                 text-transform:uppercase;white-space:nowrap;}
   .cfg-grid .ch{font-size:8.5px;font-weight:800;letter-spacing:.9px;color:#c3d3dd;
-                text-transform:uppercase;text-align:center;line-height:1.25;}
+                text-transform:uppercase;text-align:center;line-height:1.25;
+                min-width:0;overflow-wrap:break-word;}
   .cfg-grid .ch small{display:block;font-size:7.5px;font-weight:600;color:#7d909d;letter-spacing:.6px;margin-top:1px;}
 
   .cfg input[type=color]{appearance:none;-webkit-appearance:none;border:0;padding:0;
-    width:100%;height:25px;min-width:34px;background:none;border-radius:6px;cursor:pointer;}
+    width:100%;min-width:0;height:25px;background:none;border-radius:6px;cursor:pointer;}
   .cfg input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
   .cfg input[type=color]::-webkit-color-swatch{border:1px solid rgba(255,255,255,.28);border-radius:6px;}
   .cfg input[type=color]::-moz-color-swatch{border:1px solid rgba(255,255,255,.28);border-radius:6px;}
-  .cfg input[type=text]{width:100%;font:inherit;font-size:11px;font-weight:600;letter-spacing:.5px;
+  .cfg input[type=text]{width:100%;min-width:0;font:inherit;font-size:11px;font-weight:600;letter-spacing:.5px;
     text-transform:uppercase;color:var(--ink);background:rgba(0,0,0,.4);
     border:1px solid var(--panel-line);border-radius:6px;padding:6px 7px;}
   .cfg input[type=text]:focus{outline:none;border-color:var(--accent);}
@@ -1429,5 +1440,5 @@ document.addEventListener("keydown",e=>{
 
 render();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a392e1999a41ad90',t:'MTc4OTA4OTk1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a393230a4e4f908b',t:'MTc4OTA5MjYzNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
